@@ -233,7 +233,6 @@
         setState(isPlaying ? 'onair' : data.state);
         recordStation.textContent = '《' + data.name + '》';
         recordLine.textContent = data.line + ' / ' + data.task;
-        prepareRadioAudio(data);
         toastMsg('频道生成完成');
       }, 780);
     }
@@ -255,13 +254,13 @@
     }
 
     const musicProfiles = {
-      focus: {tempo: 92, root: 220, bass: [0, 0, 7, 5], lead: [12, 9, 7, 4, 7, 9, 4, 2], gain: .22},
-      mad: {tempo: 126, root: 146.83, bass: [0, 0, 3, 7], lead: [12, 10, 7, 5, 3, 5, 7, 10], gain: .24},
-      happy: {tempo: 116, root: 261.63, bass: [0, 4, 7, 9], lead: [7, 9, 12, 14, 12, 9, 7, 4], gain: .22},
-      onair: {tempo: 132, root: 174.61, bass: [0, 7, 3, 10], lead: [12, 15, 14, 10, 12, 7, 10, 14], gain: .25},
-      calm: {tempo: 72, root: 196, bass: [0, 5, 7, 2], lead: [12, 9, 7, 5, 7, 9, 12, 14], gain: .18},
-      tired: {tempo: 68, root: 164.81, bass: [0, 0, 5, 7], lead: [7, 5, 3, 0, 3, 5, 7, 10], gain: .18},
-      idle: {tempo: 84, root: 185, bass: [0, 5, 7, 9], lead: [7, 9, 12, 9, 7, 5, 2, 0], gain: .2}
+      focus: {tempo: 92, root: 220, bass: [0, 0, 7, 5], lead: [12, 9, 7, 4, 7, 9, 4, 2], chord: [0, 4, 7, 11], wave: 'triangle', gain: .2, bassVol: .3, leadVol: .18, padVol: .16, kickVol: .05, hatVol: .025, swing: .04},
+      mad: {tempo: 124, root: 146.83, bass: [0, 0, 3, 7], lead: [12, 10, 7, 5, 3, 5, 7, 10], chord: [0, 3, 7, 10], wave: 'sawtooth', gain: .23, bassVol: .42, leadVol: .2, padVol: .09, kickVol: .2, hatVol: .09, swing: .02},
+      happy: {tempo: 118, root: 261.63, bass: [0, 4, 7, 9], lead: [7, 9, 12, 14, 12, 9, 7, 4], chord: [0, 4, 7, 12], wave: 'sine', gain: .21, bassVol: .28, leadVol: .24, padVol: .14, kickVol: .11, hatVol: .07, swing: .08},
+      onair: {tempo: 136, root: 174.61, bass: [0, 7, 3, 10], lead: [12, 15, 14, 10, 12, 7, 10, 14], chord: [0, 3, 7, 10], wave: 'square', gain: .24, bassVol: .38, leadVol: .26, padVol: .08, kickVol: .24, hatVol: .12, swing: .01},
+      calm: {tempo: 70, root: 196, bass: [0, 5, 7, 2], lead: [12, 9, 7, 5, 7, 9, 12, 14], chord: [0, 5, 7, 12], wave: 'sine', gain: .17, bassVol: .23, leadVol: .13, padVol: .23, kickVol: .025, hatVol: .015, swing: .12},
+      tired: {tempo: 66, root: 164.81, bass: [0, 0, 5, 7], lead: [7, 5, 3, 0, 3, 5, 7, 10], chord: [0, 3, 7, 10], wave: 'triangle', gain: .17, bassVol: .27, leadVol: .12, padVol: .2, kickVol: .035, hatVol: .015, swing: .1},
+      idle: {tempo: 84, root: 185, bass: [0, 5, 7, 9], lead: [7, 9, 12, 9, 7, 5, 2, 0], chord: [0, 5, 7, 12], wave: 'triangle', gain: .19, bassVol: .28, leadVol: .16, padVol: .17, kickVol: .07, hatVol: .04, swing: .06}
     };
 
     function freq(root, semitone){ return root * Math.pow(2, semitone / 12); }
@@ -309,15 +308,15 @@
         if(!isPlaying || !audioCtx) return;
         const start = audioCtx.currentTime + 0.04;
         profile.bass.forEach((step, i)=>{
-          playTone(start + i * beat * 2, beat * 1.7, freq(profile.root / 2, step), 'sine', 0.16, masterGain);
+          playTone(start + i * beat * 2, beat * 1.7, freq(profile.root / 2, step), 'sine', profile.bassVol || 0.16, masterGain);
         });
         profile.lead.forEach((step, i)=>{
-          playTone(start + i * beat, beat * 0.68, freq(profile.root, step), i % 3 ? 'triangle' : 'sine', 0.11, masterGain);
+          playTone(start + i * beat, beat * 0.68, freq(profile.root, step), profile.wave || (i % 3 ? 'triangle' : 'sine'), profile.leadVol || 0.11, masterGain);
         });
-        [0, 4, 7].forEach((step, i)=>{
-          playTone(start, beat * 7.6, freq(profile.root, step), 'sine', 0.045 + i * 0.01, masterGain);
+        (profile.chord || [0, 4, 7]).slice(0, 3).forEach((step, i)=>{
+          playTone(start, beat * 7.6, freq(profile.root, step), 'sine', (profile.padVol || 0.08) * (0.55 + i * 0.12), masterGain);
         });
-        for(let i=0;i<8;i+=2) playNoise(start + i * beat, beat * 0.22, 0.045, masterGain);
+        for(let i=0;i<8;i+=2) playNoise(start + i * beat, beat * 0.22, profile.hatVol || 0.045, masterGain);
         scheduleTimer(loop, beat * 8000);
       };
       loop();
@@ -328,10 +327,10 @@
       const bassAmp = addNode(audioCtx.createGain());
       const lead = addNode(audioCtx.createOscillator());
       const leadAmp = addNode(audioCtx.createGain());
-      bass.type = 'sawtooth';
-      lead.type = 'triangle';
-      bassAmp.gain.value = 0.22;
-      leadAmp.gain.value = 0.08;
+      bass.type = profile.wave === 'square' ? 'square' : 'sawtooth';
+      lead.type = profile.wave || 'triangle';
+      bassAmp.gain.value = profile.bassVol || 0.22;
+      leadAmp.gain.value = (profile.leadVol || 0.12) * .7;
       bass.connect(bassAmp); lead.connect(leadAmp);
       bassAmp.connect(masterGain); leadAmp.connect(masterGain);
       bass.start(); lead.start();
@@ -354,7 +353,7 @@
     }
     function makeRadioWav(profile){
       const sampleRate = 22050;
-      const duration = 8;
+      const duration = 12;
       const samples = sampleRate * duration;
       const buffer = new ArrayBuffer(44 + samples * 2);
       const view = new DataView(buffer);
@@ -372,23 +371,37 @@
       writeString(view, 36, 'data');
       view.setUint32(40, samples * 2, true);
 
+      const variation = Math.floor(Math.random() * 5) - 2;
+      const leadOffset = Math.floor(Math.random() * profile.lead.length);
+      const bassOffset = Math.floor(Math.random() * profile.bass.length);
       const beat = 60 / profile.tempo;
+      const chord = profile.chord || [0, 4, 7, 12];
       for(let i=0;i<samples;i++){
         const t = i / sampleRate;
         const beatIndex = Math.floor(t / beat);
-        const inBeat = (t % beat) / beat;
-        const bassStep = profile.bass[Math.floor(beatIndex / 2) % profile.bass.length];
-        const leadStep = profile.lead[beatIndex % profile.lead.length];
+        const swingNudge = beatIndex % 2 ? profile.swing || 0 : 0;
+        const inBeat = Math.max(0, Math.min(1, ((t + swingNudge * beat) % beat) / beat));
+        const barIndex = Math.floor(beatIndex / 4);
+        const bassStep = profile.bass[(Math.floor(beatIndex / 2) + bassOffset) % profile.bass.length] + variation;
+        const leadStep = profile.lead[(beatIndex + leadOffset + (barIndex % 2)) % profile.lead.length] + variation;
+        const chordRoot = chord[barIndex % chord.length] + variation;
         const bassFreq = freq(profile.root / 2, bassStep);
         const leadFreq = freq(profile.root, leadStep);
-        const padFreq = profile.root / 2;
-        const leadEnv = Math.max(0, 1 - inBeat * 1.4);
-        const kick = Math.exp(-inBeat * 10) * Math.sin(2 * Math.PI * (75 - inBeat * 25) * t);
-        const bass = Math.sin(2 * Math.PI * bassFreq * t) * 0.42;
-        const lead = Math.sin(2 * Math.PI * leadFreq * t) * 0.28 * leadEnv;
-        const pad = (Math.sin(2 * Math.PI * padFreq * t) + Math.sin(2 * Math.PI * freq(padFreq, 7) * t)) * 0.13;
-        const hat = (beatIndex % 2 === 1 ? (Math.random() * 2 - 1) * Math.exp(-inBeat * 22) * 0.08 : 0);
-        const sample = Math.max(-0.95, Math.min(0.95, bass + lead + pad + kick * 0.16 + hat));
+        const padFreq = freq(profile.root / 2, chordRoot);
+        const leadEnv = Math.max(0, 1 - inBeat * (profile.tempo > 110 ? 2.4 : 1.25));
+        const kick = Math.exp(-inBeat * 12) * Math.sin(2 * Math.PI * (78 - inBeat * 30) * t) * (profile.kickVol || .08);
+        const snare = beatIndex % 4 === 2 ? (Math.random() * 2 - 1) * Math.exp(-inBeat * 18) * (profile.hatVol || .04) : 0;
+        const hat = beatIndex % 2 === 1 ? (Math.random() * 2 - 1) * Math.exp(-inBeat * 26) * (profile.hatVol || .04) : 0;
+        const bass = Math.sin(2 * Math.PI * bassFreq * t) * (profile.bassVol || .3);
+        const leadWave = profile.wave === 'square' ? Math.sign(Math.sin(2 * Math.PI * leadFreq * t)) : Math.sin(2 * Math.PI * leadFreq * t);
+        const lead = leadWave * (profile.leadVol || .18) * leadEnv;
+        const pad = (
+          Math.sin(2 * Math.PI * padFreq * t) +
+          Math.sin(2 * Math.PI * freq(padFreq, 7) * t) * .65 +
+          Math.sin(2 * Math.PI * freq(padFreq, 12) * t) * .35
+        ) * (profile.padVol || .15);
+        const wobble = Math.sin(2 * Math.PI * (0.12 + (profile.tempo / 900)) * t) * 0.04;
+        const sample = Math.max(-0.95, Math.min(0.95, (bass + lead + pad) * (0.9 + wobble) + kick + snare + hat));
         view.setInt16(44 + i * 2, sample * 32767, true);
       }
       return new Blob([view], {type:'audio/wav'});
@@ -403,8 +416,15 @@
       radioAudio.loop = true;
       radioAudio.volume = 0.9;
     }
-    function prepareRadioAudio(){
-      ensureRadioSource();
+    function prepareRadioAudio(station){
+      const key = station ? station.state + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) : 'loop';
+      const profile = musicProfiles[station?.state] || musicProfiles.idle;
+      radioUrlCache[key] = URL.createObjectURL(makeRadioWav(profile));
+      radioUrl = radioUrlCache[key];
+      radioAudio.src = radioUrl;
+      radioAudio.loop = true;
+      radioAudio.volume = 0.9;
+      radioAudio.load();
     }
     function startSynthRadio(){
       try{
