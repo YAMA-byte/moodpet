@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MoodPet FM 桌宠 Demo</title>
+  <style>
+    :root{
+      --bg:#060711;
+      --panel:rgba(13,18,38,.82);
+      --panel2:rgba(20,27,58,.9);
+      --line:rgba(138,153,255,.38);
+      --text:#e9ecff;
+      --muted:#9fa8da;
+      --blue:#7d83fc;
+      --blue2:#a9afff;
+      --pink:#ff7dc6;
+      --cyan:#69e7ff;
+      --green:#8df7cf;
+      --yellow:#ffdc73;
+      --danger:#ff6980;
+      --shadow:0 18px 60px rgba(0,0,0,.45), 0 0 42px rgba(125,131,252,.22);
+      --pixel: 6px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;color:var(--text);overflow:hidden;background:
+      radial-gradient(circle at 70% 30%, rgba(125,131,252,.18), transparent 38%),
+      radial-gradient(circle at 20% 78%, rgba(255,125,198,.12), transparent 34%),
+      linear-gradient(135deg,#04050b,#0b1023 56%,#050712);
+    }
+    body::before{
+      content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;
+      background-image:linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size:42px 42px;
+    }
+    .desktop-hint{position:fixed;left:36px;top:30px;max-width:520px;user-select:none;opacity:.95}
+    .desktop-hint h1{margin:0 0 12px;font-size:28px;letter-spacing:.3px}
+    .desktop-hint p{margin:0;color:var(--muted);line-height:1.8;font-size:14px}
+    .desktop-hint kbd{padding:2px 8px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.06);color:#dfe4ff}
+    .screen-mock{position:fixed;left:36px;bottom:34px;display:flex;gap:12px;opacity:.38;user-select:none}
+    .mock-card{width:118px;height:68px;border:1px solid rgba(138,153,255,.18);background:rgba(255,255,255,.045);border-radius:18px;padding:14px;color:#d6dbff;font-size:12px}
+    .mock-bar{height:6px;border-radius:9px;background:rgba(125,131,252,.38);margin-bottom:10px}.mock-bar:nth-child(2){width:72%}.mock-bar:nth-child(3){width:46%}
+
+    #petWidget{position:fixed;right:72px;bottom:76px;width:214px;height:245px;z-index:20;user-select:none;touch-action:none;display:grid;place-items:center;filter:drop-shadow(0 18px 30px rgba(0,0,0,.45));}
+    #petWidget.dragging{cursor:grabbing;filter:drop-shadow(0 22px 36px rgba(0,0,0,.55)) brightness(1.04)}
+    .pet-hotspot{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);width:118px;height:118px;border-radius:999px;cursor:grab;z-index:2}
+    .pet{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);width:126px;height:118px;image-rendering:pixelated;transition:transform .22s ease, filter .22s ease;z-index:1;}
+    .pet::before{content:"";position:absolute;left:27px;top:6px;width:72px;height:60px;background:#8f9cff;box-shadow:
+      6px 0 #8f9cff,12px 0 #8f9cff,18px 0 #8f9cff,
+      -6px 6px #8f9cff,0 6px #8f9cff,6px 6px #8f9cff,12px 6px #8f9cff,18px 6px #8f9cff,24px 6px #8f9cff,30px 6px #8f9cff,
+      -12px 12px #8f9cff,-6px 12px #8f9cff,0 12px #8f9cff,6px 12px #8f9cff,12px 12px #8f9cff,18px 12px #8f9cff,24px 12px #8f9cff,30px 12px #8f9cff,36px 12px #8f9cff,
+      -12px 18px #8f9cff,-6px 18px #8f9cff,0 18px #8f9cff,6px 18px #8f9cff,12px 18px #8f9cff,18px 18px #8f9cff,24px 18px #8f9cff,30px 18px #8f9cff,36px 18px #8f9cff,
+      -6px 24px #8f9cff,0 24px #8f9cff,6px 24px #8f9cff,12px 24px #8f9cff,18px 24px #8f9cff,24px 24px #8f9cff,30px 24px #8f9cff,
+      0 30px #8f9cff,6px 30px #8f9cff,12px 30px #8f9cff,18px 30px #8f9cff,24px 30px #8f9cff;
+      filter:drop-shadow(0 0 12px rgba(125,131,252,.55));}
+    .pet::after{content:"";position:absolute;left:31px;top:20px;width:18px;height:18px;background:rgba(255,255,255,.15);box-shadow:9px -5px rgba(255,255,255,.18), 39px 6px rgba(255,255,255,.07)}
+    .eye{position:absolute;top:48px;width:8px;height:20px;background:#03040a;z-index:3}.eye.left{left:49px}.eye.right{right:49px}
+    .cheek{position:absolute;top:72px;width:8px;height:12px;background:var(--pink);opacity:.82;z-index:3;box-shadow:0 0 12px rgba(255,125,198,.6)}.cheek.left{left:38px}.cheek.right{right:38px}
+    .leg{position:absolute;top:86px;width:14px;height:25px;background:#828dfa;z-index:0;box-shadow:0 0 10px rgba(125,131,252,.35)}.l1{left:33px}.l2{left:56px}.l3{right:56px}.l4{right:33px}
+    .hp{position:absolute;z-index:4}.band{left:24px;top:0;width:78px;height:42px;border:8px solid #050612;border-bottom:0;border-radius:58px 58px 0 0;box-shadow:0 -7px 0 #7e88f9 inset}.cup{top:43px;width:18px;height:33px;background:#6570d7;box-shadow:inset -5px 0 rgba(0,0,0,.2)}.cup.l{left:18px}.cup.r{right:18px}.pad{top:50px;width:10px;height:23px;background:#ff7dc6}.pad.l{left:10px}.pad.r{right:10px}
+    .signal{position:absolute;right:33px;top:15px;width:36px;height:30px;opacity:0;z-index:5}.signal span{position:absolute;left:50%;transform:translateX(-50%);border:5px solid var(--pink);border-bottom:0;border-radius:40px 40px 0 0}.signal span:nth-child(1){top:19px;width:10px;height:8px}.signal span:nth-child(2){top:9px;width:23px;height:16px}.signal span:nth-child(3){top:0;width:36px;height:24px}
+    .halo{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);width:126px;height:18px;border-radius:999px;border:2px solid rgba(125,131,252,.32);box-shadow:0 0 28px rgba(125,131,252,.28);opacity:.6;}
+    .note{position:absolute;font-size:24px;color:var(--pink);text-shadow:0 0 12px rgba(255,125,198,.7);opacity:0}.note.n1{left:34px;top:34px}.note.n2{right:18px;top:58px;color:var(--cyan)}
+    #petWidget.idle .pet{animation:float 3.2s ease-in-out infinite}#petWidget.thinking .pet{animation:tune .55s infinite steps(2);filter:hue-rotate(15deg) brightness(1.1)}#petWidget.onair .pet{animation:bounce .62s ease-in-out infinite;filter:brightness(1.12)}#petWidget.onair .signal,#petWidget.onair .note{opacity:1;animation:pulse 1.1s infinite}#petWidget.happy .eye{height:6px;top:52px;border-radius:8px;background:#02030a}#petWidget.happy .cheek{opacity:1}#petWidget.focus .eye{height:5px;top:55px}#petWidget.focus .cheek{opacity:.28}#petWidget.calm .pet{filter:brightness(.98) saturate(.86)}#petWidget.tired .pet{transform:translate(-50%,-45%) scaleY(.92)}#petWidget.mad .pet{filter:hue-rotate(118deg) brightness(1.18)}#petWidget.mad .cheek{background:#ff697d}.status-dot{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);width:8px;height:8px;border-radius:99px;background:var(--green);box-shadow:0 0 12px var(--green);z-index:6}.onair .status-dot{background:var(--pink);box-shadow:0 0 16px var(--pink)}.thinking .status-dot{background:var(--yellow);box-shadow:0 0 16px var(--yellow)}
+    @keyframes float{0%,100%{transform:translate(-50%,-51%)}50%{transform:translate(-50%,-57%)}}@keyframes bounce{0%,100%{transform:translate(-50%,-53%) scale(1)}50%{transform:translate(-50%,-61%) scale(1.04,.96)}}@keyframes tune{0%{transform:translate(-52%,-54%)}100%{transform:translate(-48%,-54%)}}@keyframes pulse{0%,100%{transform:translateY(0);opacity:.7}50%{transform:translateY(-8px);opacity:1}}
+
+    .bubble{position:absolute;right:140px;bottom:114px;width:322px;min-height:120px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,rgba(17,23,54,.94),rgba(8,12,29,.94));box-shadow:var(--shadow);padding:16px;z-index:10;opacity:0;transform:translate(12px,8px) scale(.96);pointer-events:none;transition:.18s ease}.bubble.open{opacity:1;transform:translate(0,0) scale(1);pointer-events:auto}.bubble::after{content:"";position:absolute;right:-8px;bottom:34px;width:16px;height:16px;background:rgba(9,13,32,.96);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(-45deg)}
+    .bubble-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.bubble-title{font-size:15px;font-weight:800;letter-spacing:.2px}.mini-pill{font-size:11px;color:#d3d8ff;border:1px solid rgba(138,153,255,.32);background:rgba(125,131,252,.16);padding:4px 8px;border-radius:99px}.say{font-size:13px;line-height:1.65;color:#dce1ff;margin:0 0 12px}.input-row{display:flex;gap:8px}.mood-input{flex:1;height:38px;border:1px solid rgba(138,153,255,.34);background:rgba(255,255,255,.06);border-radius:14px;padding:0 12px;color:var(--text);outline:none;font-size:13px}.mood-input:focus{border-color:rgba(105,231,255,.72);box-shadow:0 0 0 3px rgba(105,231,255,.1)}button{border:0;border-radius:14px;color:white;background:linear-gradient(135deg,var(--blue),#6b71e8);font-weight:800;cursor:pointer;transition:.15s ease}button:hover{transform:translateY(-1px);filter:brightness(1.08)}button:active{transform:translateY(0)}.open-btn{width:60px}.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.quick button,.ghost-btn{font-size:12px;padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(138,153,255,.28);color:#dbe0ff;font-weight:700}.quick button:hover,.ghost-btn:hover{background:rgba(125,131,252,.18)}.close-x{width:26px;height:26px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(138,153,255,.25);color:#bdc5ff}
+    .result{display:none;margin-top:12px;border-top:1px dashed rgba(138,153,255,.26);padding-top:12px}.result.show{display:block}.station{font-size:18px;font-weight:900;color:#fff;margin-bottom:8px;text-shadow:0 0 18px rgba(125,131,252,.35)}.meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 10px}.tag{font-size:11px;color:#bfc7ff;border:1px solid rgba(138,153,255,.26);background:rgba(125,131,252,.1);border-radius:999px;padding:4px 8px}.quote{font-size:13px;line-height:1.7;color:#dce1ff;margin:8px 0}.task{font-size:12px;color:#b8c1ff;background:rgba(255,255,255,.05);border:1px solid rgba(138,153,255,.18);border-radius:14px;padding:9px 10px;margin:10px 0}.actions{display:flex;gap:8px;margin-top:10px}.play{flex:1;background:linear-gradient(135deg,var(--pink),#7d83fc)}.swap{width:82px}.tiny-menu{position:absolute;right:28px;bottom:14px;display:flex;gap:6px;opacity:0;transform:translateY(8px);transition:.18s ease;z-index:8}#petWidget:hover .tiny-menu,#petWidget.menu-open .tiny-menu{opacity:1;transform:translateY(0)}.tiny-menu button{width:34px;height:30px;border-radius:12px;background:rgba(10,14,35,.92);border:1px solid rgba(138,153,255,.28);font-size:15px;color:#dfe3ff}.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(16px);opacity:0;padding:12px 16px;border-radius:16px;background:rgba(12,18,40,.92);border:1px solid rgba(138,153,255,.26);box-shadow:var(--shadow);color:#dfe4ff;font-size:13px;z-index:40;transition:.2s ease}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .wave{display:inline-flex;align-items:end;gap:3px;height:14px;margin-left:4px}.wave i{display:block;width:3px;background:var(--pink);border-radius:4px;animation:wv .7s infinite ease-in-out}.wave i:nth-child(2){height:13px;animation-delay:.1s;background:var(--cyan)}.wave i:nth-child(1),.wave i:nth-child(3){height:8px}.wave i:nth-child(4){height:11px;animation-delay:.2s}@keyframes wv{0%,100%{transform:scaleY(.45)}50%{transform:scaleY(1.1)}}
+    .mini-record{position:fixed;right:28px;top:26px;width:230px;border:1px solid rgba(138,153,255,.26);border-radius:22px;background:rgba(7,10,27,.72);backdrop-filter:blur(14px);padding:14px;box-shadow:var(--shadow);opacity:0;transform:translateY(-8px);pointer-events:none;transition:.2s ease}.mini-record.show{opacity:1;transform:translateY(0);pointer-events:auto}.record-title{font-size:12px;color:#9fa8da;margin-bottom:8px}.record-station{font-size:15px;font-weight:900;margin-bottom:8px}.record-line{font-size:12px;color:#d6dbff;line-height:1.6}.record-close{position:absolute;right:10px;top:10px;width:24px;height:24px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid rgba(138,153,255,.22)}
+    @media (max-width:720px){.desktop-hint{display:none}.bubble{right:auto;left:50%;bottom:220px;transform:translate(-50%,8px) scale(.96);width:min(330px,calc(100vw - 28px))}.bubble.open{transform:translate(-50%,0) scale(1)}.bubble::after{display:none}#petWidget{right:30px;bottom:48px}.mini-record{left:18px;right:18px;width:auto}}
+  </style>
+</head>
+<body>
+  <div class="desktop-hint">
+    <h1>MoodPet FM 桌宠 Demo</h1>
+    <p>这是轻量桌宠形态：不进入网页产品页，直接和小水母互动。<br>试试：<kbd>hover</kbd> 展开输入框，<kbd>拖拽</kbd> 移动桌宠，输入“我很累 / 我要专注 / 我现在很烦 / 来点发疯的”。</p>
+  </div>
+  <div class="screen-mock" aria-hidden="true"><div class="mock-card"><div class="mock-bar"></div><div class="mock-bar"></div><div class="mock-bar"></div></div><div class="mock-card"><div class="mock-bar"></div><div class="mock-bar"></div><div class="mock-bar"></div></div><div class="mock-card"><div class="mock-bar"></div><div class="mock-bar"></div><div class="mock-bar"></div></div></div>
+
+  <section id="petWidget" class="idle" aria-label="MoodPet FM 桌宠">
+    <div class="bubble" id="bubble">
+      <div class="bubble-top">
+        <div class="bubble-title" id="bubbleTitle">今天想听什么心情？</div>
+        <button class="close-x" id="closeBubble" title="收起">×</button>
+      </div>
+      <p class="say" id="petSay">告诉我你现在的状态，我来给你开一档专属电台。</p>
+      <div class="input-row">
+        <input id="moodInput" class="mood-input" placeholder="比如：今天很累，但还想坚持一下" autocomplete="off" />
+        <button id="startBtn" class="open-btn">开台</button>
+      </div>
+      <div class="quick">
+        <button data-mood="我要专注 25 分钟">专注</button>
+        <button data-mood="今天有点累，想被治愈一下">治愈</button>
+        <button data-mood="我现在很烦，想吐槽一下">吐槽</button>
+        <button data-mood="来点发疯但优雅的音乐">发疯</button>
+      </div>
+      <div class="result" id="resultBox">
+        <div class="station" id="stationName">下班后还没认输 FM</div>
+        <div class="meta" id="tags"></div>
+        <p class="quote" id="hostLine">今天不要求完美，只要求开始。</p>
+        <div class="task" id="taskText">小任务：先做 10 分钟。</div>
+        <div class="actions">
+          <button class="play" id="playBtn">播放电台 <span class="wave"><i></i><i></i><i></i><i></i></span></button>
+          <button class="ghost-btn swap" id="swapBtn">换一台</button>
+        </div>
+      </div>
+    </div>
+    <div class="halo"></div>
+    <div class="note n1">♪</div><div class="note n2">♫</div>
+    <div class="pet" id="pet">
+      <div class="hp band"></div><div class="hp cup l"></div><div class="hp cup r"></div><div class="hp pad l"></div><div class="hp pad r"></div>
+      <div class="eye left"></div><div class="eye right"></div><div class="cheek left"></div><div class="cheek right"></div>
+      <div class="leg l1"></div><div class="leg l2"></div><div class="leg l3"></div><div class="leg l4"></div>
+      <div class="signal"><span></span><span></span><span></span></div>
+    </div>
+    <div class="pet-hotspot" id="hotspot"></div>
+    <div class="status-dot"></div>
+    <div class="tiny-menu">
+      <button title="快速开台" id="quickOpen">📻</button>
+      <button title="今日唱片" id="recordBtn">💿</button>
+      <button title="静音/播放" id="muteBtn">🔈</button>
+    </div>
+  </section>
+
+  <div class="mini-record" id="recordCard">
+    <button class="record-close" id="recordClose">×</button>
+    <div class="record-title">今日心情唱片</div>
+    <div class="record-station" id="recordStation">还没有开台</div>
+    <div class="record-line" id="recordLine">hover 桌宠，输入一句心情，生成你的第一张情绪唱片。</div>
+  </div>
+  <div class="toast" id="toast">已完成</div>
+
+  <script>
+    const widget = document.getElementById('petWidget');
+    const hotspot = document.getElementById('hotspot');
+    const bubble = document.getElementById('bubble');
+    const input = document.getElementById('moodInput');
+    const startBtn = document.getElementById('startBtn');
+    const closeBubble = document.getElementById('closeBubble');
+    const petSay = document.getElementById('petSay');
+    const bubbleTitle = document.getElementById('bubbleTitle');
+    const resultBox = document.getElementById('resultBox');
+    const stationName = document.getElementById('stationName');
+    const tags = document.getElementById('tags');
+    const hostLine = document.getElementById('hostLine');
+    const taskText = document.getElementById('taskText');
+    const playBtn = document.getElementById('playBtn');
+    const swapBtn = document.getElementById('swapBtn');
+    const toast = document.getElementById('toast');
+    const quickOpen = document.getElementById('quickOpen');
+    const recordBtn = document.getElementById('recordBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const recordCard = document.getElementById('recordCard');
+    const recordClose = document.getElementById('recordClose');
+    const recordStation = document.getElementById('recordStation');
+    const recordLine = document.getElementById('recordLine');
+
+    let pinned = false, isPlaying = false, audioCtx, osc1, osc2, gain, lastMood = '', lastStation = null, hoverTimer;
+
+    const saved = JSON.parse(localStorage.getItem('moodpet-pos') || 'null');
+    if(saved){ widget.style.left = saved.left + 'px'; widget.style.top = saved.top + 'px'; widget.style.right='auto'; widget.style.bottom='auto'; }
+
+    function setState(s){ widget.className = s || 'idle'; }
+    function openBubble(focus=false){ clearTimeout(hoverTimer); bubble.classList.add('open'); if(focus) setTimeout(()=>input.focus(),50); }
+    function softClose(){ if(!pinned && document.activeElement !== input) bubble.classList.remove('open'); }
+    hotspot.addEventListener('mouseenter', ()=>openBubble(false));
+    widget.addEventListener('mouseleave', ()=>{ hoverTimer=setTimeout(softClose, 420); });
+    bubble.addEventListener('mouseenter', ()=>clearTimeout(hoverTimer));
+    bubble.addEventListener('mouseleave', ()=>{ hoverTimer=setTimeout(softClose, 480); });
+    hotspot.addEventListener('dblclick', ()=>{ input.value='给我快速开一档现在能听的电台'; generate(); });
+    hotspot.addEventListener('click', ()=>{ pinned = true; openBubble(true); });
+    closeBubble.addEventListener('click', ()=>{ pinned=false; bubble.classList.remove('open'); input.blur(); });
+
+    // drag
+    let dragging=false, startX=0,startY=0,baseX=0,baseY=0,moved=false;
+    hotspot.addEventListener('pointerdown', e=>{
+      dragging=true;moved=false;widget.classList.add('dragging');hotspot.setPointerCapture(e.pointerId);
+      const r=widget.getBoundingClientRect();startX=e.clientX;startY=e.clientY;baseX=r.left;baseY=r.top;
+    });
+    hotspot.addEventListener('pointermove', e=>{
+      if(!dragging)return; const dx=e.clientX-startX, dy=e.clientY-startY; if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
+      const x=Math.max(10,Math.min(window.innerWidth-widget.offsetWidth-10,baseX+dx));
+      const y=Math.max(10,Math.min(window.innerHeight-widget.offsetHeight-10,baseY+dy));
+      widget.style.left=x+'px'; widget.style.top=y+'px'; widget.style.right='auto'; widget.style.bottom='auto';
+    });
+    hotspot.addEventListener('pointerup', e=>{
+      dragging=false;widget.classList.remove('dragging');hotspot.releasePointerCapture(e.pointerId);
+      const r=widget.getBoundingClientRect(); localStorage.setItem('moodpet-pos', JSON.stringify({left:r.left, top:r.top}));
+      if(!moved){ pinned=true; openBubble(true); }
+    });
+
+    document.querySelectorAll('.quick button').forEach(btn=>btn.addEventListener('click',()=>{input.value=btn.dataset.mood; generate();}));
+    startBtn.addEventListener('click', generate);
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') generate(); if(e.key==='Escape'){pinned=false;bubble.classList.remove('open');} });
+    swapBtn.addEventListener('click', ()=>{ input.value = lastMood || input.value || '换一个更适合现在的频道'; generate(true); });
+    quickOpen.addEventListener('click', ()=>{pinned=true;openBubble(true);input.value='现在随便给我开一档轻松的电台';generate();});
+    recordBtn.addEventListener('click', ()=> recordCard.classList.toggle('show'));
+    recordClose.addEventListener('click', ()=> recordCard.classList.remove('show'));
+    muteBtn.addEventListener('click', ()=>{ if(isPlaying) stopRadio(); else if(lastStation) startRadio(); });
+    playBtn.addEventListener('click', ()=> isPlaying ? stopRadio() : startRadio());
+
+    function toastMsg(t){ toast.textContent=t; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1600); }
+
+    function generate(alt=false){
+      const text = (input.value || '').trim();
+      if(!text){ openBubble(true); petSay.textContent='先告诉我一句状态吧，比如“我今天很累”。'; return; }
+      lastMood = text; pinned = true; openBubble(false); setState('thinking'); resultBox.classList.remove('show'); bubbleTitle.textContent='正在调频中...';
+      petSay.innerHTML='正在捕捉你的情绪频率<span class="wave"><i></i><i></i><i></i><i></i></span>';
+      setTimeout(()=>{
+        const data = makeStation(text, alt);
+        lastStation = data;
+        stationName.textContent = '《' + data.name + '》';
+        tags.innerHTML = data.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+        hostLine.textContent = data.line;
+        taskText.textContent = '小任务：' + data.task;
+        bubbleTitle.textContent = '已为你接入频道';
+        petSay.textContent = data.intro;
+        resultBox.classList.add('show');
+        setState(data.state);
+        recordStation.textContent = '《' + data.name + '》';
+        recordLine.textContent = data.line + ' / ' + data.task;
+        toastMsg('频道生成完成');
+      }, 780);
+    }
+
+    function makeStation(text, alt){
+      const t = text.toLowerCase();
+      const pools = [
+        {k:/累|疲|困|低电量|不想动|下班/, state:'tired', name:['下班后还没认输 FM','低电量漂浮频道','今晚慢慢来 FM'], tags:['疲惫','治愈','低压'], line:'今天不要求完美，只要求开始。先把音量调小，把自己放回来。', task:'只做 10 分钟，完成一个最小动作。', intro:'我听到一点疲惫，但也听到你还没放弃。'},
+        {k:/专注|学习|作品集|工作|写|设计|效率|ddl|论文/, state:'focus', name:['沉浸专注 FM','作品集续命频道','不被打扰电台'], tags:['专注','轻节奏','陪伴'], line:'这一轮我不吵你，只在旁边发光。我们先专注 25 分钟。', task:'打开当前要做的文件，先处理一个小块。', intro:'已切到低打扰模式，我会安静陪你。'},
+        {k:/烦|骂|生气|压力|领导|崩|吐槽|委屈/, state:'mad', name:['打工人地下广播','允许你烦五分钟 FM','怨气回收站'], tags:['吐槽','释放','回血'], line:'允许你烦五分钟，但别让坏情绪承包整个晚上。', task:'写下一句最想吐槽的话，然后关掉它。', intro:'收到怨气信号，我来帮你压缩成一段电波。'},
+        {k:/紧张|上台|演示|面试|比赛|汇报|害怕/, state:'happy', name:['临场不怂 FM','上台前战歌电台','心跳稳定器'], tags:['打气','稳定','战歌'], line:'你不需要完全不紧张，你只需要带着紧张完成它。', task:'深呼吸 3 次，然后说出第一句话。', intro:'检测到心率频道升高，正在给你加一点勇气。'},
+        {k:/开心|高兴|不错|快乐|顺利|庆祝/, state:'happy', name:['快乐信号台','今天有点亮 FM','微笑同步频道'], tags:['开心','轻快','庆祝'], line:'今天的好状态值得被存档，别急着跳过它。', task:'记录一个今天做对的小事。', intro:'哇，我收到很亮的信号。'},
+        {k:/发疯|燃|嗨|摇滚|疯|蹦|炸/, state:'onair', name:['发疯但优雅频道','脑内蹦迪 FM','高能信号塔'], tags:['高能','电子','释放'], line:'理智先存档，快乐开始播放。发疯可以，但要优雅。', task:'站起来活动 30 秒。', intro:'频道能量过高，我已经戴好耳机了。'},
+        {k:/安静|治愈|放松|睡|平静|缓一下/, state:'calm', name:['低压漂浮频道','夜间水母电台','缓慢回蓝 FM'], tags:['治愈','慢速','温柔'], line:'先不用解决所有事，我们先把呼吸找回来。', task:'闭眼 20 秒，放松肩膀。', intro:'我把频道调软一点，陪你慢下来。'}
+      ];
+      let item = pools.find(p=>p.k.test(t)) || {state:'idle', name:['今日微光 FM','随机漂浮频道','小小开始电台'], tags:['日常','轻陪伴','随机'], line:'不知道怎么说也没关系，我们可以从一首很小的歌开始。', task:'选一个现在最容易完成的小动作。', intro:'我还不完全懂，但我会先陪你一下。'};
+      const idx = alt ? Math.floor(Math.random()*item.name.length) : 0;
+      return {...item, name:item.name[idx]};
+    }
+
+    function startRadio(){
+      if(!lastStation){ generate(); return; }
+      try{
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        stopRadio(true);
+        osc1 = audioCtx.createOscillator(); osc2 = audioCtx.createOscillator(); gain = audioCtx.createGain();
+        const mood = lastStation.state;
+        const f = mood==='focus'?220:mood==='mad'?130:mood==='happy'?330:mood==='onair'?180:mood==='calm'?196:164;
+        osc1.type='sine'; osc2.type='triangle'; osc1.frequency.value=f; osc2.frequency.value=f*1.5;
+        gain.gain.value=0.0001; osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+        osc1.start(); osc2.start();
+        const now = audioCtx.currentTime; gain.gain.exponentialRampToValueAtTime(0.035, now+.35);
+        isPlaying=true; setState('onair'); playBtn.innerHTML='暂停电台 <span class="wave"><i></i><i></i><i></i><i></i></span>'; muteBtn.textContent='🔇';
+        petSay.textContent='On Air 中：' + lastStation.line;
+      }catch(err){ toastMsg('浏览器阻止了音频，点击页面后再试'); }
+    }
+    function stopRadio(quiet=false){
+      if(gain && audioCtx){ try{gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+.08)}catch(e){} }
+      setTimeout(()=>{ try{osc1&&osc1.stop();osc2&&osc2.stop();}catch(e){} osc1=osc2=null; }, 100);
+      isPlaying=false; if(!quiet){ setState(lastStation ? lastStation.state : 'idle'); playBtn.textContent='播放电台'; muteBtn.textContent='🔈'; }
+    }
+
+    const idleLines = ['今天想听什么心情？','我在，随时可以开台。','hover 我，说一句现在的状态。','要不要来一档低压电台？'];
+    setInterval(()=>{ if(!bubble.classList.contains('open') && !isPlaying){ petSay.textContent = idleLines[Math.floor(Math.random()*idleLines.length)]; } }, 7000);
+  </script>
+</body>
+</html>
