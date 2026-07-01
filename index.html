@@ -157,7 +157,8 @@
     const recordStation = document.getElementById('recordStation');
     const recordLine = document.getElementById('recordLine');
 
-    let pinned = false, isPlaying = false, audioCtx, osc1, osc2, gain, lastMood = '', lastStation = null, hoverTimer;
+    let pinned = false, isPlaying = false, pendingAutoplay = false, audioCtx, osc1, osc2, gain, lastMood = '', lastStation = null, hoverTimer;
+    let lastPlayIntent = 0;
     let masterGain, musicTimers = [], activeNodes = [];
 
     const saved = JSON.parse(localStorage.getItem('moodpet-pos') || 'null');
@@ -193,20 +194,40 @@
     });
 
     document.querySelectorAll('.quick button').forEach(btn=>btn.addEventListener('click',()=>{input.value=btn.dataset.mood; generate();}));
-    startBtn.addEventListener('click', generate);
+    startBtn.addEventListener('pointerdown', ()=>{ pendingAutoplay = true; primeAudio(); });
+    startBtn.addEventListener('click', ()=>{ pendingAutoplay = true; primeAudio(); generate(); });
     input.addEventListener('keydown', e=>{ if(e.key==='Enter') generate(); if(e.key==='Escape'){pinned=false;bubble.classList.remove('open');} });
     swapBtn.addEventListener('click', ()=>{ input.value = lastMood || input.value || '换一个更适合现在的频道'; generate(true); });
     quickOpen.addEventListener('click', ()=>{pinned=true;openBubble(true);input.value='现在随便给我开一档轻松的电台';generate();});
     recordBtn.addEventListener('click', ()=> recordCard.classList.toggle('show'));
     recordClose.addEventListener('click', ()=> recordCard.classList.remove('show'));
-    muteBtn.addEventListener('click', ()=>{ if(isPlaying) stopRadio(); else if(lastStation) startRadio(); });
-    playBtn.addEventListener('click', ()=> isPlaying ? stopRadio() : startRadio());
+    function handlePlayIntent(e){
+      e.preventDefault();
+      const now = Date.now();
+      if(now - lastPlayIntent < 350) return;
+      lastPlayIntent = now;
+      primeAudio();
+      isPlaying ? stopRadio() : startRadio();
+    }
+    muteBtn.addEventListener('pointerdown', handlePlayIntent);
+    muteBtn.addEventListener('click', handlePlayIntent);
+    playBtn.addEventListener('pointerdown', handlePlayIntent);
+    playBtn.addEventListener('click', handlePlayIntent);
 
     function toastMsg(t){ toast.textContent=t; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1600); }
+
+    async function primeAudio(){
+      try{
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if(audioCtx.state === 'suspended') await audioCtx.resume();
+      }catch(err){}
+    }
 
     function generate(alt=false){
       const text = (input.value || '').trim();
       if(!text){ openBubble(true); petSay.textContent='先告诉我一句状态吧，比如“我今天很累”。'; return; }
+      pendingAutoplay = true;
+      primeAudio();
       lastMood = text; pinned = true; openBubble(false); setState('thinking'); resultBox.classList.remove('show'); bubbleTitle.textContent='正在调频中...';
       petSay.innerHTML='正在捕捉你的情绪频率<span class="wave"><i></i><i></i><i></i><i></i></span>';
       setTimeout(()=>{
@@ -219,10 +240,14 @@
         bubbleTitle.textContent = '已为你接入频道';
         petSay.textContent = data.intro;
         resultBox.classList.add('show');
+        pinned = true;
+        openBubble(false);
         setState(data.state);
         recordStation.textContent = '《' + data.name + '》';
         recordLine.textContent = data.line + ' / ' + data.task;
         toastMsg('频道生成完成');
+        pendingAutoplay = false;
+        startRadio();
       }, 780);
     }
 
@@ -243,13 +268,13 @@
     }
 
     const musicProfiles = {
-      focus: {tempo: 92, root: 220, scale: [0, 2, 4, 7, 9, 12], bass: [0, 0, 7, 5], lead: [12, 9, 7, 4, 7, 9, 4, 2], gain: .05},
-      mad: {tempo: 126, root: 146.83, scale: [0, 3, 5, 7, 10, 12], bass: [0, 0, 3, 7], lead: [12, 10, 7, 5, 3, 5, 7, 10], gain: .055},
-      happy: {tempo: 116, root: 261.63, scale: [0, 2, 4, 7, 9, 12], bass: [0, 4, 7, 9], lead: [7, 9, 12, 14, 12, 9, 7, 4], gain: .052},
-      onair: {tempo: 132, root: 174.61, scale: [0, 2, 3, 7, 10, 12], bass: [0, 7, 3, 10], lead: [12, 15, 14, 10, 12, 7, 10, 14], gain: .06},
-      calm: {tempo: 72, root: 196, scale: [0, 2, 5, 7, 9, 12], bass: [0, 5, 7, 2], lead: [12, 9, 7, 5, 7, 9, 12, 14], gain: .042},
-      tired: {tempo: 68, root: 164.81, scale: [0, 3, 5, 7, 10, 12], bass: [0, 0, 5, 7], lead: [7, 5, 3, 0, 3, 5, 7, 10], gain: .04},
-      idle: {tempo: 84, root: 185, scale: [0, 2, 5, 7, 9, 12], bass: [0, 5, 7, 9], lead: [7, 9, 12, 9, 7, 5, 2, 0], gain: .045}
+      focus: {tempo: 92, root: 220, bass: [0, 0, 7, 5], lead: [12, 9, 7, 4, 7, 9, 4, 2], gain: .22},
+      mad: {tempo: 126, root: 146.83, bass: [0, 0, 3, 7], lead: [12, 10, 7, 5, 3, 5, 7, 10], gain: .24},
+      happy: {tempo: 116, root: 261.63, bass: [0, 4, 7, 9], lead: [7, 9, 12, 14, 12, 9, 7, 4], gain: .22},
+      onair: {tempo: 132, root: 174.61, bass: [0, 7, 3, 10], lead: [12, 15, 14, 10, 12, 7, 10, 14], gain: .25},
+      calm: {tempo: 72, root: 196, bass: [0, 5, 7, 2], lead: [12, 9, 7, 5, 7, 9, 12, 14], gain: .18},
+      tired: {tempo: 68, root: 164.81, bass: [0, 0, 5, 7], lead: [7, 5, 3, 0, 3, 5, 7, 10], gain: .18},
+      idle: {tempo: 84, root: 185, bass: [0, 5, 7, 9], lead: [7, 9, 12, 9, 7, 5, 2, 0], gain: .2}
     };
 
     function freq(root, semitone){ return root * Math.pow(2, semitone / 12); }
@@ -297,25 +322,57 @@
         if(!isPlaying || !audioCtx) return;
         const start = audioCtx.currentTime + 0.04;
         profile.bass.forEach((step, i)=>{
-          playTone(start + i * beat * 2, beat * 1.7, freq(profile.root / 2, step), 'sine', 0.065, masterGain);
+          playTone(start + i * beat * 2, beat * 1.7, freq(profile.root / 2, step), 'sine', 0.16, masterGain);
         });
         profile.lead.forEach((step, i)=>{
-          playTone(start + i * beat, beat * 0.68, freq(profile.root, step), i % 3 ? 'triangle' : 'sine', 0.028, masterGain);
+          playTone(start + i * beat, beat * 0.68, freq(profile.root, step), i % 3 ? 'triangle' : 'sine', 0.11, masterGain);
         });
         [0, 4, 7].forEach((step, i)=>{
-          playTone(start, beat * 7.6, freq(profile.root, step), 'sine', 0.012 + i * 0.003, masterGain);
+          playTone(start, beat * 7.6, freq(profile.root, step), 'sine', 0.045 + i * 0.01, masterGain);
         });
-        for(let i=0;i<8;i+=2) playNoise(start + i * beat, beat * 0.22, 0.012, masterGain);
+        for(let i=0;i<8;i+=2) playNoise(start + i * beat, beat * 0.22, 0.045, masterGain);
         scheduleTimer(loop, beat * 8000);
       };
       loop();
     }
+    function startAudibleBed(profile){
+      const beat = 60 / profile.tempo;
+      const bass = addNode(audioCtx.createOscillator());
+      const bassAmp = addNode(audioCtx.createGain());
+      const lead = addNode(audioCtx.createOscillator());
+      const leadAmp = addNode(audioCtx.createGain());
+      bass.type = 'sawtooth';
+      lead.type = 'triangle';
+      bassAmp.gain.value = 0.22;
+      leadAmp.gain.value = 0.08;
+      bass.connect(bassAmp); lead.connect(leadAmp);
+      bassAmp.connect(masterGain); leadAmp.connect(masterGain);
+      bass.start(); lead.start();
+      let step = 0;
+      const update = ()=>{
+        if(!isPlaying || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        const bassStep = profile.bass[step % profile.bass.length];
+        const leadStep = profile.lead[step % profile.lead.length];
+        bass.frequency.setTargetAtTime(freq(profile.root / 2, bassStep), now, 0.035);
+        lead.frequency.setTargetAtTime(freq(profile.root, leadStep), now, 0.035);
+        step += 1;
+      };
+      update();
+      musicTimers.push(setInterval(update, beat * 1000));
+    }
 
-    function startRadio(){
-      if(!lastStation){ generate(); return; }
+    async function startRadio(){
+      petSay.textContent='正在启动电台声音...';
+      if(!lastStation){
+        pendingAutoplay = true;
+        generate();
+        toastMsg('频道生成后会自动播放');
+        return;
+      }
       try{
         audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-        if(audioCtx.state === 'suspended') audioCtx.resume();
+        if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>toastMsg('请再点一次播放电台'));
         resetRadioNodes();
         const profile = musicProfiles[lastStation.state] || musicProfiles.idle;
         masterGain = audioCtx.createGain();
@@ -324,9 +381,11 @@
         gain = masterGain;
         const now = audioCtx.currentTime; masterGain.gain.exponentialRampToValueAtTime(profile.gain, now+.45);
         isPlaying=true; setState('onair'); playBtn.innerHTML='暂停电台 <span class="wave"><i></i><i></i><i></i><i></i></span>'; muteBtn.textContent='🔇';
+        playTone(now + 0.03, 0.18, profile.root, 'sine', 0.22, masterGain);
+        startAudibleBed(profile);
         startMusicLoop(profile);
         petSay.textContent='On Air 中：' + lastStation.line;
-      }catch(err){ toastMsg('浏览器阻止了音频，点击页面后再试'); }
+      }catch(err){ toastMsg('音频启动失败：' + (err.message || '请再点一次')); }
     }
     function stopRadio(quiet=false){
       if(gain && audioCtx){ try{gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+.08)}catch(e){} }
